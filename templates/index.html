@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Almacén — {{ current_path or 'Inicio' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>🗄️ Almacén LAN</h1>
+        <nav class="breadcrumbs">
+            <a href="{{ url_for('browse') }}">Inicio</a>
+            {% for crumb in breadcrumbs %}
+                / <a href="{{ url_for('browse', subpath=crumb.path) }}">{{ crumb.name }}</a>
+            {% endfor %}
+        </nav>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="flash {{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <section class="actions">
+            <form class="upload-form" action="{{ url_for('upload', subpath=current_path) }}" method="post" enctype="multipart/form-data">
+                <input type="file" name="files" multiple required>
+                <button type="submit">⬆️ Subir</button>
+            </form>
+
+            <form class="mkdir-form" action="{{ url_for('mkdir', subpath=current_path) }}" method="post">
+                <input type="text" name="folder_name" placeholder="Nueva carpeta" required>
+                <button type="submit">📁 Crear</button>
+            </form>
+        </section>
+
+        <table class="file-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Tamaño</th>
+                    <th>Modificado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if parent is not none %}
+                <tr class="dir-row">
+                    <td colspan="4">
+                        <a href="{{ url_for('browse', subpath=parent) }}">⬅️ .. (subir un nivel)</a>
+                    </td>
+                </tr>
+                {% endif %}
+
+                {% for entry in entries %}
+                <tr class="{{ 'dir-row' if entry.is_dir else 'file-row' }}">
+                    <td>
+                        {% if entry.is_dir %}
+                            📁 <a href="{{ url_for('browse', subpath=entry.rel_path) }}">{{ entry.name }}</a>
+                        {% else %}
+                            📄 {{ entry.name }}
+                        {% endif %}
+                    </td>
+                    <td>{{ entry.size }}</td>
+                    <td>{{ entry.modified }}</td>
+                    <td class="row-actions">
+                        {% if not entry.is_dir %}
+                            <a href="{{ url_for('download', filepath=entry.rel_path) }}" title="Descargar">⬇️</a>
+                        {% endif %}
+                        <form class="rename-form" action="{{ url_for('rename', filepath=entry.rel_path) }}" method="post">
+                            <input type="text" name="new_name" placeholder="nuevo nombre" required>
+                            <button type="submit" title="Renombrar">✏️</button>
+                        </form>
+                        <form class="delete-form" action="{{ url_for('delete', filepath=entry.rel_path) }}" method="post"
+                              onsubmit="return confirm('¿Eliminar {{ entry.name }}? Esta acción no se puede deshacer.');">
+                            <button type="submit" title="Eliminar">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="empty">Esta carpeta está vacía.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>
